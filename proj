@@ -1,0 +1,128 @@
+import random
+import string
+import smtplib
+from email.message import EmailMessage
+from collections import defaultdict
+from paypalcheckoutsdk.orders import OrdersCreateRequest
+from paypalcheckoutsdk.orders import OrdersCaptureRequest
+from paypalcheckoutsdk import OrdersGetRequest
+from paypalcheckoutsdk.core import PayPalHttpClient, SandboxEnvironment
+
+class User:
+    def __init__(self, email, password):
+        self.email = email
+        self.password = password
+
+class Student(User):
+    def __init__(self, email, password):
+        super().__init__(email, password)
+        self.courses_enrolled = []
+
+    def explore_courses(self, courses):
+        for course in courses:
+            print(course)
+
+    def search_courses(self, courses, keyword):
+        matching_courses = [course for course in courses if keyword.lower() in course.title.lower()]
+        for course in matching_courses:
+            print(course)
+
+    def purchase_course(self, course):
+        self.courses_enrolled.append(course)
+        print(f"Successfully purchased course: {course.title}")
+
+    def view_course_content(self, course):
+        if course in self.courses_enrolled:
+            print(f"Course Content for {course.title}:")
+            for topic in course.content:
+                print(topic)
+        else:
+            print("You have not enrolled in this course.")
+
+class Teacher(User):
+    def __init__(self, email, password):
+        super().__init__(email, password)
+        self.courses_taught = []
+
+    def create_course(self, title, price):
+        course = Course(title, price, self)
+        self.courses_taught.append(course)
+        print(f"Course '{title}' created successfully.")
+
+    def update_course(self, course, new_title, new_price):
+        course.title = new_title
+        course.price = new_price
+        print(f"Course '{course.title}' updated successfully.")
+
+    def delete_course(self, course):
+        self.courses_taught.remove(course)
+        print(f"Course '{course.title}' deleted successfully.")
+
+    def add_content(self, course, content):
+        course.add_content(content)
+        print(f"Content added to course '{course.title}' successfully.")
+
+    def delete_content(self, course, content):
+        course.delete_content(content)
+        print(f"Content deleted from course '{course.title}' successfully.")
+
+class Course:
+    def __init__(self, title, price, teacher):
+        self.title = title
+        self.price = price
+        self.teacher = teacher
+        self.content = []
+
+    def add_content(self, content):
+        self.content.append(content)
+
+    def delete_content(self, content):
+        self.content.remove(content)
+
+class Content:
+    def __init__(self, topic, content_text):
+        self.topic = topic
+        self.content_text = content_text
+
+# PayPal configuration
+environment = SandboxEnvironment(client_id="YOUR_CLIENT_ID", client_secret="YOUR_CLIENT_SECRET")
+client = PayPalHttpClient(environment)
+
+def send_otp_email(email):
+    otp = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    msg = EmailMessage()
+    msg.set_content(f"Your OTP for login: {otp}")
+    msg['Subject'] = "Login OTP"
+    msg['From'] = "your_email@gmail.com"  # Sender's email
+    msg['To'] = email
+
+    with smtplib.SMTP('smtp.gmail.com', 587) as server:
+        server.starttls()
+        server.login("your_email@gmail.com", "your_password")  # Your email credentials
+        server.send_message(msg)
+
+    return otp
+
+def verify_otp(otp_input, otp_generated):
+    return otp_input == otp_generated
+
+# Example usage
+student1 = Student("student1@example.com", "password1")
+teacher1 = Teacher("teacher1@example.com", "password2")
+
+# Creating courses
+teacher1.create_course("Python Programming", 49.99)
+teacher1.create_course("Data Science Fundamentals", 69.99)
+
+# Adding content to courses
+python_course = teacher1.courses_taught[0]
+python_course.add_content(Content("Introduction to Python", "Python is a high-level programming language..."))
+python_course.add_content(Content("Data Structures in Python", "Lists, tuples, dictionaries..."))
+
+# Student exploring and purchasing courses
+courses_available = teacher1.courses_taught
+student1.explore_courses(courses_available)
+student1.purchase_course(python_course)
+
+# Viewing course content
+student1.view_course_content(python_course)
